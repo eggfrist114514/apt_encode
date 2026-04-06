@@ -1,1 +1,220 @@
+name: Build All Platforms
 
+on:
+  workflow_dispatch:
+  push:
+    tags: ['v*']
+
+jobs:
+  # ==================== Windows 平台 ====================
+  
+  windows-amd64:
+    name: Windows - AMD64
+    runs-on: windows-latest
+    strategy:
+      matrix:
+        type: [cli, gui]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          architecture: 'x64'
+      - name: Install dependencies
+        run: pip install pyinstaller numpy pillow
+      - name: Build
+        run: |
+          if ("${{ matrix.type }}" -eq "gui") {
+            $CONSOLE_FLAG = "--noconsole"
+          } else {
+            $CONSOLE_FLAG = ""
+          }
+          pyinstaller --onefile $CONSOLE_FLAG --icon="build/windows/app.ico" --name="apt-${{ matrix.type }}-win-amd64" "build/windows/apt2.0.1-${{ matrix.type }}.py"
+      - name: Upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: apt-win-amd64-${{ matrix.type }}
+          path: dist/*.exe
+
+  windows-x86:
+    name: Windows - x86 (32-bit)
+    runs-on: windows-latest
+    strategy:
+      matrix:
+        type: [cli, gui]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Python 32-bit
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          architecture: 'x86'
+      - name: Install dependencies
+        run: pip install pyinstaller numpy pillow
+      - name: Build
+        run: |
+          if ("${{ matrix.type }}" -eq "gui") {
+            $CONSOLE_FLAG = "--noconsole"
+          } else {
+            $CONSOLE_FLAG = ""
+          }
+          pyinstaller --onefile $CONSOLE_FLAG --icon="build/windows/app.ico" --name="apt-${{ matrix.type }}-win-x86" "build/windows/apt2.0.1-${{ matrix.type }}.py"
+      - name: Upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: apt-win-x86-${{ matrix.type }}
+          path: dist/*.exe
+
+  windows-arm64:
+    name: Windows - ARM64
+    runs-on: windows-latest
+    strategy:
+      matrix:
+        type: [cli, gui]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Python ARM64
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          architecture: 'arm64'
+      - name: Install dependencies
+        run: pip install pyinstaller numpy pillow
+      - name: Build
+        run: |
+          if ("${{ matrix.type }}" -eq "gui") {
+            $CONSOLE_FLAG = "--noconsole"
+          } else {
+            $CONSOLE_FLAG = ""
+          }
+          pyinstaller --onefile $CONSOLE_FLAG --icon="build/windows/app.ico" --name="apt-${{ matrix.type }}-win-arm64" "build/windows/apt2.0.1-${{ matrix.type }}.py"
+      - name: Upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: apt-win-arm64-${{ matrix.type }}
+          path: dist/*.exe
+
+  # ==================== Linux 平台 ====================
+
+  linux-ubuntu-amd64:
+    name: Ubuntu - AMD64
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        type: [cli, gui]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y python3-tk
+          pip install pyinstaller numpy pillow
+      - name: Build CLI
+        if: matrix.type == 'cli'
+        run: |
+          pyinstaller --onefile --icon="build/windows/app.ico" --name="apt-cli-ubuntu-amd64" "build/linux/apt2.0.1.py"
+      - name: Build GUI
+        if: matrix.type == 'gui'
+        run: |
+          pyinstaller --onefile --windowed --icon="build/windows/app.ico" --name="apt-gui-ubuntu-amd64" "build/linux/apt2.0.1-ui.py"
+      - name: Upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: apt-ubuntu-amd64-${{ matrix.type }}
+          path: dist/*
+
+  linux-ubuntu-arm64:
+    name: Ubuntu - ARM64 (via QEMU)
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        type: [cli, gui]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+      - name: Setup Python ARM64
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          architecture: 'arm64'
+      - name: Install dependencies
+        run: pip install pyinstaller numpy pillow
+      - name: Build
+        run: |
+          if [ "${{ matrix.type }}" = "gui" ]; then
+            CONSOLE_FLAG="--windowed"
+          else
+            CONSOLE_FLAG=""
+          fi
+          pyinstaller --onefile $CONSOLE_FLAG --icon="build/windows/app.ico" --name="apt-${{ matrix.type }}-ubuntu-arm64" "build/linux/apt2.0.1-${{ matrix.type }}.py"
+      - name: Upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: apt-ubuntu-arm64-${{ matrix.type }}
+          path: dist/*
+
+  linux-debian-amd64:
+    name: Debian - AMD64
+    runs-on: ubuntu-latest
+    container:
+      image: debian:bookworm
+    strategy:
+      matrix:
+        type: [cli, gui]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install dependencies
+        run: |
+          apt-get update
+          apt-get install -y python3 python3-pip python3-tk binutils
+          pip install pyinstaller numpy pillow
+      - name: Build CLI
+        if: matrix.type == 'cli'
+        run: |
+          pyinstaller --onefile --icon="build/windows/app.ico" --name="apt-cli-debian-amd64" "build/linux/apt2.0.1.py"
+      - name: Build GUI
+        if: matrix.type == 'gui'
+        run: |
+          pyinstaller --onefile --windowed --icon="build/windows/app.ico" --name="apt-gui-debian-amd64" "build/linux/apt2.0.1-ui.py"
+      - name: Upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: apt-debian-amd64-${{ matrix.type }}
+          path: dist/*
+
+  linux-debian-arm64:
+    name: Debian - ARM64 (via QEMU)
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        type: [cli, gui]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+      - name: Setup Python ARM64
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          architecture: 'arm64'
+      - name: Install dependencies
+        run: pip install pyinstaller numpy pillow
+      - name: Build
+        run: |
+          if [ "${{ matrix.type }}" = "gui" ]; then
+            CONSOLE_FLAG="--windowed"
+          else
+            CONSOLE_FLAG=""
+          fi
+          pyinstaller --onefile $CONSOLE_FLAG --icon="build/windows/app.ico" --name="apt-${{ matrix.type }}-debian-arm64" "build/linux/apt2.0.1-${{ matrix.type }}.py"
+      - name: Upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: apt-debian-arm64-${{ matrix.type }}
+          path: dist/*
