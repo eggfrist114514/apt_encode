@@ -1,45 +1,43 @@
 name: Build Both CLI and GUI
 
 on:
+  workflow_dispatch:
   push:
     tags: ['v*']
-  workflow_dispatch:
 
 jobs:
-  build:
+  build-cli:
     runs-on: windows-latest
-    strategy:
-      matrix:
-        include:
-          - script: "apt2.0.1.py"
-            name: "apt-cli"
-            no_console: false      # false = 保留控制台
-          - script: "apt2.0.1-ui.py"
-            name: "apt-gui"
-            no_console: true       # true = 隐藏控制台
-    
     steps:
       - uses: actions/checkout@v4
-
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-
       - name: Install dependencies
         run: pip install pyinstaller numpy pillow
-
-      - name: Build ${{ matrix.name }}
-        run: |
-          if (${{ matrix.no_console }}) {
-            $CONSOLE_FLAG = "--noconsole"
-          } else {
-            $CONSOLE_FLAG = ""
-          }
-          pyinstaller --onefile $CONSOLE_FLAG --icon="build/windows/app.ico" --name="${{ matrix.name }}" "build/windows/${{ matrix.script }}"
-
-      - name: Upload ${{ matrix.name }}
+      - name: Build CLI
+        run: pyinstaller --onefile --icon="build/windows/app.ico" --name="apt-cli" "build/windows/apt2.0.1.py"
+      - name: Upload CLI
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.name }}-windows
+          name: apt-cli-windows
+          path: dist/*.exe
+
+  build-gui:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install dependencies
+        run: pip install pyinstaller numpy pillow
+      - name: Build GUI
+        run: pyinstaller --onefile --noconsole --icon="build/windows/app.ico" --name="apt-gui" "build/windows/apt2.0.1-ui.py"
+      - name: Upload GUI
+        uses: actions/upload-artifact@v4
+        with:
+          name: apt-gui-windows
           path: dist/*.exe
