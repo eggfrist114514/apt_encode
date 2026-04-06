@@ -247,7 +247,6 @@ jobs:
       - debian-arm64-gui  
       - macos-arm64-cli  
       - macos-arm64-gui  
-    if: startsWith(github.ref, 'refs/tags/v')  
     permissions:  
       contents: write  
     steps:  
@@ -256,8 +255,10 @@ jobs:
           path: artifacts  
       - uses: softprops/action-gh-release@v2  
         with:  
-          name: Release ${{ github.ref_name }}  
+          tag_name: "Test"  
+          name: "Test version"  
           body: "Build results for all platforms."  
           files: artifacts/**/*  
           draft: false  
-          prerelease: false
+          prerelease: false  
+          make_latest: true
