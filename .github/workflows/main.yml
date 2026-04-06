@@ -62,35 +62,12 @@ jobs:
           name: apt-win-x86-${{ matrix.type }}
           path: dist/*.exe
 
-  windows-arm64:
-    name: Windows - ARM64
-    runs-on: windows-latest
-    strategy:
-      matrix:
-        type: [cli, gui]
-    steps:
-      - uses: actions/checkout@v4
-      - name: Setup Python ARM64
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-          architecture: 'arm64'
-      - name: Install dependencies
-        run: pip install pyinstaller numpy pillow
-      - name: Build CLI
-        if: matrix.type == 'cli'
-        run: pyinstaller --onefile --icon="build/windows/app.ico" --name="apt-cli-win-arm64" "build/windows/apt2.0.1.py"
-      - name: Build GUI
-        if: matrix.type == 'gui'
-        run: pyinstaller --onefile --noconsole --icon="build/windows/app.ico" --name="apt-gui-win-arm64" "build/windows/apt2.0.1-ui.py"
-      - name: Upload
-        uses: actions/upload-artifact@v4
-        with:
-          name: apt-win-arm64-${{ matrix.type }}
-          path: dist/*.exe
+  # Windows ARM64 - 暂时跳过（GitHub Actions 不稳定）
+  # ARM64 Windows 可以运行 AMD64 版本（通过模拟）
 
   # ==================== Linux 平台 ====================
 
+  # Ubuntu AMD64
   linux-ubuntu-amd64:
     name: Ubuntu - AMD64
     runs-on: ubuntu-latest
@@ -120,6 +97,7 @@ jobs:
           name: apt-ubuntu-amd64-${{ matrix.type }}
           path: dist/*
 
+  # Ubuntu ARM64
   linux-ubuntu-arm64:
     name: Ubuntu - ARM64
     runs-on: ubuntu-24.04-arm
@@ -149,6 +127,71 @@ jobs:
           name: apt-ubuntu-arm64-${{ matrix.type }}
           path: dist/*
 
+  # Ubuntu ARM32 (使用 QEMU)
+  linux-ubuntu-arm32:
+    name: Ubuntu - ARM32
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        type: [cli, gui]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+      - name: Setup Python ARM32
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          architecture: 'arm32'
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y python3-tk
+          pip install pyinstaller numpy pillow
+      - name: Build CLI
+        if: matrix.type == 'cli'
+        run: pyinstaller --onefile --icon="build/windows/app.ico" --name="apt-cli-ubuntu-arm32" "build/linux/apt2.0.1.py"
+      - name: Build GUI
+        if: matrix.type == 'gui'
+        run: pyinstaller --onefile --windowed --icon="build/windows/app.ico" --name="apt-gui-ubuntu-arm32" "build/linux/apt2.0.1-ui.py"
+      - name: Upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: apt-ubuntu-arm32-${{ matrix.type }}
+          path: dist/*
+
+  # Ubuntu x86 (32-bit)
+  linux-ubuntu-x86:
+    name: Ubuntu - x86 (32-bit)
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        type: [cli, gui]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Python x86
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          architecture: 'x86'
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y python3-tk
+          pip install pyinstaller numpy pillow
+      - name: Build CLI
+        if: matrix.type == 'cli'
+        run: pyinstaller --onefile --icon="build/windows/app.ico" --name="apt-cli-ubuntu-x86" "build/linux/apt2.0.1.py"
+      - name: Build GUI
+        if: matrix.type == 'gui'
+        run: pyinstaller --onefile --windowed --icon="build/windows/app.ico" --name="apt-gui-ubuntu-x86" "build/linux/apt2.0.1-ui.py"
+      - name: Upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: apt-ubuntu-x86-${{ matrix.type }}
+          path: dist/*
+
+  # Debian AMD64
   linux-debian-amd64:
     name: Debian - AMD64
     runs-on: ubuntu-latest
@@ -163,7 +206,6 @@ jobs:
         run: |
           apt-get update
           apt-get install -y python3 python3-pip python3-tk binutils
-          # 关键修复：添加 --break-system-packages
           pip install pyinstaller numpy pillow --break-system-packages
       - name: Build CLI
         if: matrix.type == 'cli'
@@ -177,6 +219,7 @@ jobs:
           name: apt-debian-amd64-${{ matrix.type }}
           path: dist/*
 
+  # Debian ARM64
   linux-debian-arm64:
     name: Debian - ARM64
     runs-on: ubuntu-24.04-arm
@@ -191,7 +234,6 @@ jobs:
         run: |
           apt-get update
           apt-get install -y python3 python3-pip python3-tk binutils
-          # 关键修复：添加 --break-system-packages
           pip install pyinstaller numpy pillow --break-system-packages
       - name: Build CLI
         if: matrix.type == 'cli'
@@ -203,6 +245,74 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: apt-debian-arm64-${{ matrix.type }}
+          path: dist/*
+
+  # Debian ARM32
+  linux-debian-arm32:
+    name: Debian - ARM32
+    runs-on: ubuntu-latest
+    container:
+      image: debian:bookworm
+    strategy:
+      matrix:
+        type: [cli, gui]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+      - name: Setup Python ARM32
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          architecture: 'arm32'
+      - name: Install dependencies
+        run: |
+          apt-get update
+          apt-get install -y python3 python3-pip python3-tk binutils
+          pip install pyinstaller numpy pillow --break-system-packages
+      - name: Build CLI
+        if: matrix.type == 'cli'
+        run: pyinstaller --onefile --icon="build/windows/app.ico" --name="apt-cli-debian-arm32" "build/linux/apt2.0.1.py"
+      - name: Build GUI
+        if: matrix.type == 'gui'
+        run: pyinstaller --onefile --windowed --icon="build/windows/app.ico" --name="apt-gui-debian-arm32" "build/linux/apt2.0.1-ui.py"
+      - name: Upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: apt-debian-arm32-${{ matrix.type }}
+          path: dist/*
+
+  # Debian x86 (32-bit)
+  linux-debian-x86:
+    name: Debian - x86 (32-bit)
+    runs-on: ubuntu-latest
+    container:
+      image: debian:bookworm
+    strategy:
+      matrix:
+        type: [cli, gui]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Python x86
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          architecture: 'x86'
+      - name: Install dependencies
+        run: |
+          apt-get update
+          apt-get install -y python3 python3-pip python3-tk binutils
+          pip install pyinstaller numpy pillow --break-system-packages
+      - name: Build CLI
+        if: matrix.type == 'cli'
+        run: pyinstaller --onefile --icon="build/windows/app.ico" --name="apt-cli-debian-x86" "build/linux/apt2.0.1.py"
+      - name: Build GUI
+        if: matrix.type == 'gui'
+        run: pyinstaller --onefile --windowed --icon="build/windows/app.ico" --name="apt-gui-debian-x86" "build/linux/apt2.0.1-ui.py"
+      - name: Upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: apt-debian-x86-${{ matrix.type }}
           path: dist/*
 
   # ==================== macOS 平台 ====================
@@ -263,3 +373,52 @@ jobs:
         with:
           name: apt-macos-arm64-${{ matrix.type }}
           path: dist/*
+
+  # ==================== 创建 Release ====================
+  
+  create-release:
+    name: Create Release and Upload All Artifacts
+    runs-on: ubuntu-latest
+    needs: [windows-amd64, windows-x86, linux-ubuntu-amd64, linux-ubuntu-arm64, linux-ubuntu-arm32, linux-ubuntu-x86, linux-debian-amd64, linux-debian-arm64, linux-debian-arm32, linux-debian-x86, macos-amd64, macos-arm64]
+    if: startsWith(github.ref, 'refs/tags/v')
+    permissions:
+      contents: write
+    
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+      
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: Release ${{ github.ref_name }}
+          body: |
+            ## APT Encode v${{ github.ref_name }}
+            
+            ### Windows 版本
+            - AMD64 (64位): apt-win-amd64-cli.exe / apt-win-amd64-gui.exe
+            - x86 (32位): apt-win-x86-cli.exe / apt-win-x86-gui.exe
+            
+            ### Ubuntu 版本
+            - AMD64: apt-cli-ubuntu-amd64 / apt-gui-ubuntu-amd64
+            - ARM64: apt-cli-ubuntu-arm64 / apt-gui-ubuntu-arm64
+            - ARM32: apt-cli-ubuntu-arm32 / apt-gui-ubuntu-arm32
+            - x86 (32位): apt-cli-ubuntu-x86 / apt-gui-ubuntu-x86
+            
+            ### Debian 版本
+            - AMD64: apt-cli-debian-amd64 / apt-gui-debian-amd64
+            - ARM64: apt-cli-debian-arm64 / apt-gui-debian-arm64
+            - ARM32: apt-cli-debian-arm32 / apt-gui-debian-arm32
+            - x86 (32位): apt-cli-debian-x86 / apt-gui-debian-x86
+            
+            ### macOS 版本
+            - Intel (AMD64): apt-cli-macos-amd64 / apt-gui-macos-amd64
+            - Apple Silicon (ARM64): apt-cli-macos-arm64 / apt-gui-macos-arm64
+            
+            ## 使用方法
+            下载对应平台的压缩包，解压后直接运行可执行文件。
+          files: artifacts/**/*
+          draft: false
+          prerelease: false
