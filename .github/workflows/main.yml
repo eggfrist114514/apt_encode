@@ -62,8 +62,32 @@ jobs:
           name: apt-win-x86-${{ matrix.type }}
           path: dist/*.exe
 
-  # Windows ARM64 - 跳过，因为不稳定，改用 AMD64 兼容包
-  # ARM64 Windows 可以直接运行 AMD64 的 exe（通过模拟）
+  windows-arm64:
+    name: Windows - ARM64
+    runs-on: windows-latest
+    strategy:
+      matrix:
+        type: [cli, gui]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Python ARM64
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          architecture: 'arm64'
+      - name: Install dependencies
+        run: pip install pyinstaller numpy pillow
+      - name: Build CLI
+        if: matrix.type == 'cli'
+        run: pyinstaller --onefile --icon="build/windows/app.ico" --name="apt-cli-win-arm64" "build/windows/apt2.0.1.py"
+      - name: Build GUI
+        if: matrix.type == 'gui'
+        run: pyinstaller --onefile --noconsole --icon="build/windows/app.ico" --name="apt-gui-win-arm64" "build/windows/apt2.0.1-ui.py"
+      - name: Upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: apt-win-arm64-${{ matrix.type }}
+          path: dist/*.exe
 
   # ==================== Linux 平台 ====================
 
@@ -98,7 +122,7 @@ jobs:
 
   linux-ubuntu-arm64:
     name: Ubuntu - ARM64
-    runs-on: ubuntu-24.04-arm  # 使用原生 ARM64 runner
+    runs-on: ubuntu-24.04-arm
     strategy:
       matrix:
         type: [cli, gui]
@@ -139,7 +163,8 @@ jobs:
         run: |
           apt-get update
           apt-get install -y python3 python3-pip python3-tk binutils
-          pip install pyinstaller numpy pillow
+          # 关键修复：添加 --break-system-packages
+          pip install pyinstaller numpy pillow --break-system-packages
       - name: Build CLI
         if: matrix.type == 'cli'
         run: pyinstaller --onefile --icon="build/windows/app.ico" --name="apt-cli-debian-amd64" "build/linux/apt2.0.1.py"
@@ -152,7 +177,6 @@ jobs:
           name: apt-debian-amd64-${{ matrix.type }}
           path: dist/*
 
-  # Debian ARM64 - 使用原生 ARM runner
   linux-debian-arm64:
     name: Debian - ARM64
     runs-on: ubuntu-24.04-arm
@@ -167,7 +191,8 @@ jobs:
         run: |
           apt-get update
           apt-get install -y python3 python3-pip python3-tk binutils
-          pip install pyinstaller numpy pillow
+          # 关键修复：添加 --break-system-packages
+          pip install pyinstaller numpy pillow --break-system-packages
       - name: Build CLI
         if: matrix.type == 'cli'
         run: pyinstaller --onefile --icon="build/windows/app.ico" --name="apt-cli-debian-arm64" "build/linux/apt2.0.1.py"
@@ -178,4 +203,63 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: apt-debian-arm64-${{ matrix.type }}
+          path: dist/*
+
+  # ==================== macOS 平台 ====================
+  
+  macos-amd64:
+    name: macOS - AMD64 (Intel)
+    runs-on: macos-latest
+    strategy:
+      matrix:
+        type: [cli, gui]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install dependencies
+        run: |
+          brew install python-tk
+          pip install pyinstaller numpy pillow
+      - name: Build CLI
+        if: matrix.type == 'cli'
+        run: pyinstaller --onefile --icon="build/windows/app.ico" --name="apt-cli-macos-amd64" "build/linux/apt2.0.1.py"
+      - name: Build GUI
+        if: matrix.type == 'gui'
+        run: pyinstaller --onefile --windowed --icon="build/windows/app.ico" --name="apt-gui-macos-amd64" "build/linux/apt2.0.1-ui.py"
+      - name: Upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: apt-macos-amd64-${{ matrix.type }}
+          path: dist/*
+
+  macos-arm64:
+    name: macOS - ARM64 (Apple Silicon)
+    runs-on: macos-latest
+    strategy:
+      matrix:
+        type: [cli, gui]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Python ARM64
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          architecture: 'arm64'
+      - name: Install dependencies
+        run: |
+          brew install python-tk
+          pip install pyinstaller numpy pillow
+      - name: Build CLI
+        if: matrix.type == 'cli'
+        run: pyinstaller --onefile --icon="build/windows/app.ico" --name="apt-cli-macos-arm64" "build/linux/apt2.0.1.py"
+      - name: Build GUI
+        if: matrix.type == 'gui'
+        run: pyinstaller --onefile --windowed --icon="build/windows/app.ico" --name="apt-gui-macos-arm64" "build/linux/apt2.0.1-ui.py"
+      - name: Upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: apt-macos-arm64-${{ matrix.type }}
           path: dist/*
