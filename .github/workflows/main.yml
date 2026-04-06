@@ -121,8 +121,7 @@ jobs:
     runs-on: ubuntu-24.04-arm
     steps:
       - uses: actions/checkout@v4
-      - name: Setup Python
-        uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
       - run: |
@@ -200,7 +199,7 @@ jobs:
           path: dist/*
 
   macos-amd64-cli:
-    runs-on: macos-13
+    runs-on: macos-12
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -216,7 +215,7 @@ jobs:
           path: dist/*
 
   macos-amd64-gui:
-    runs-on: macos-13
+    runs-on: macos-12
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -292,9 +291,7 @@ jobs:
       - uses: softprops/action-gh-release@v2
         with:
           name: Release ${{ github.ref_name }}
-          body: |
-            ## APT Encode v${{ github.ref_name }}
-            Builds for Windows, Ubuntu, Debian, and macOS.
+          body: "Build results for all platforms."
           files: artifacts/**/*
           draft: false
           prerelease: false
