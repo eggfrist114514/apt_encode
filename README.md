@@ -1,4 +1,4 @@
-English | [简体中文](README.zh.md)
+English | [简体中文](README_zh.md)
 This is an improved version of the NOAA-APT encoder
 
 Changelog
