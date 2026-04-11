@@ -52,8 +52,8 @@ def generate_image():
     print(f"已选择 APT-A: {apt_a_format}, APT-B: {apt_b_format}")
     
     switch_sensor = input("切换传感器?N/Y\n").strip() or None
-    cs = 0
-    if switch_sensor in ["Y","y"]:
+    switch_enabled = switch_sensor in ["Y","y"]
+    if switch_enabled:
         switch_line = int(input("第几次遥测切换?\n"))
         switch_a_format = input("切换A图格式")
         switch_b_format = input("切换b图格式")
@@ -61,9 +61,12 @@ def generate_image():
         t_val1_list_switch = APT_B_CONFIGS.get(switch_b_format, APT_B_CONFIGS["5"])
     else:
         switch_line = -1
+        switch_a_format = apt_a_format
+        switch_b_format = apt_b_format
+        t_val_list_switch = t_val_list
+        t_val1_list_switch = t_val1_list
     
     fault_flag = int(input("红外状态\n0:正常,1:禁用,默认选项0 ") or 0)
-    fault_flag = int(fault_flag)
     
     img1 = Image.open(img1_path)
     img2 = Image.open(img2_path)
@@ -79,8 +82,7 @@ def generate_image():
     arrA = np.array(imgA)
     arrB = np.array(imgB)
     
-    conn =114514
-    black_mode = 1
+    connt = 114514
     len_syncA = len(SYNCA)
     len_syncB = len(SYNCB)
     len_space = 47
@@ -95,8 +97,9 @@ def generate_image():
     avhrr = 0
     avhrr1 = 0
     
-    is_a_format_high = apt_a_format in ["3b", "4", "5"]
-    is_b_format_high = apt_b_format in ["3b", "4", "5"]
+    y_indices = np.arange(new_height)
+    row_mod = y_indices % 120
+    space_high_mask = (row_mod == 0) | (row_mod == 1)
     
     for y in range(new_height):
         current_a_format = apt_a_format
@@ -104,94 +107,92 @@ def generate_image():
         current_t_val_list = t_val_list
         current_t_val1_list = t_val1_list
         
-        if conn ==1 or cs // 128 == switch_line and switch_sensor in ["Y","y"]:
+        if connt == 1 or (switch_enabled and y // 128 == switch_line):
             current_a_format = switch_a_format
             current_b_format = switch_b_format
             current_t_val_list = t_val_list_switch
             current_t_val1_list = t_val1_list_switch
-            conn = 1
+            connt = 1
         
         is_current_a_high = current_a_format in ["3b", "4", "5"]
         is_current_b_high = current_b_format in ["3b", "4", "5"]
         
-        line = []
-        line.extend(syncA_arr.tolist())
+        line = np.zeros(total_width, dtype=np.uint8)
+        pos = 0
+        line[pos:pos+len_syncA] = syncA_arr
+        pos += len_syncA
         
         if fault_flag == 0:
             if is_current_a_high:
-                spaceA = 0 if (y % 120 == 0 or y % 120 == 1) else 255
+                spaceA = np.where(space_high_mask[y], 0, 255)
             else:
-                spaceA = 255 if (y % 120 == 0 or y % 120 == 1) else 0
+                spaceA = np.where(space_high_mask[y], 255, 0)
         else:
-            if black_mode == 1:
-                spaceA = 255 if (y % 120 == 0 or y % 120 == 1) else 0
-            else:
-                spaceA = 0
-        line.extend([spaceA] * len_space)
+            spaceA = np.where(space_high_mask[y], 255, 0)
+        line[pos:pos+len_space] = spaceA
+        pos += len_space
         
-        if fault_flag == 0:
-            line.extend(arrA[y].tolist())
+        if fault_flag == 1 and is_current_a_high:
+            line[pos:pos+len_image] = 0
         else:
-            if black_mode == 1:
-                line.extend([10] * len_image)
-            else:
-                line.extend([255] * len_image)
+            line[pos:pos+len_image] = arrA[y]
+        pos += len_image
         
         t_val = current_t_val_list[(avhrr//8)]
-        if black_mode == 0 and fault_flag == 1:
-            avhrr = 0
-            t_val = 25
-        line.extend([t_val] * len_telemetry)
+        line[pos:pos+len_telemetry] = t_val
+        pos += len_telemetry
         
-        line.extend(syncB_arr.tolist())
+        line[pos:pos+len_syncB] = syncB_arr
+        pos += len_syncB
         
         if fault_flag == 0:
             if is_current_b_high:
-                spaceB = 0 if (y % 120 == 0 or y % 120 == 1) else 255
+                spaceB = np.where(space_high_mask[y], 0, 255)
             else:
-                spaceB = 255 if (y % 120 == 0 or y % 120 == 1) else 0
+                spaceB = np.where(space_high_mask[y], 255, 0)
         else:
-            if black_mode == 1:
-                spaceB = 255 if (y % 120 == 0 or y % 120 == 1) else 0
-            else:
-                spaceB = 0
-        line.extend([spaceB] * len_space)
+            spaceB = np.where(space_high_mask[y], 255, 0)
+        line[pos:pos+len_space] = spaceB
+        pos += len_space
         
-        if fault_flag == 0:
-            line.extend(arrB[y].tolist())
+        if fault_flag == 1 and is_current_b_high:
+            line[pos:pos+len_image] = 0
         else:
-            if black_mode == 1:
-                line.extend([10] * len_image)
-            else:
-                line.extend([255] * len_image)
+            line[pos:pos+len_image] = arrB[y]
+        pos += len_image
         
         t_val1 = current_t_val1_list[(avhrr1//8)]
-        if black_mode == 0 and fault_flag == 1:
-            avhrr1 = 0
-            t_val1 = 20
-        line.extend([t_val1] * len_telemetry)
+        line[pos:pos+len_telemetry] = t_val1
         
-        output[y] = np.array(line, dtype=np.uint8)
+        output[y] = line
         
         avhrr = 0 if avhrr >= 127 else avhrr + 1
         avhrr1 = 0 if avhrr1 >= 127 else avhrr1 + 1
-        cs += 1
+        
+        if y % 10 == 0 or y == new_height - 1:
+            percentage = (y + 1) / new_height * 100
+            sys.stdout.write(f"\r\x1b[34m图像生成进度\x1b[0m: {percentage:.2f}%")
+            sys.stdout.flush()
     
+    print()
     output_path = os.path.join(SCRIPT_DIR, 'APT.png')
     Image.fromarray(output).save(output_path)
     print(f"图像已保存至: {output_path}")
-    return (new_height, total_width, files)
+    return (new_height, total_width, files, output)
 
-def generate_audio(height, width, files):
-    img_path = os.path.join(SCRIPT_DIR, 'APT.png')
-    if not os.path.exists(img_path):
-        print("没有可用的图片文件,退出")
-        return
-    
-    img = Image.open(img_path)
-    if img.mode != 'L':
-        img = convert_to_8bit(img)
-    arr = np.array(img)
+def generate_audio(height, width, files, image_array=None):
+    if image_array is None:
+        img_path = os.path.join(SCRIPT_DIR, 'APT.png')
+        if not os.path.exists(img_path):
+            print("没有可用的图片文件,退出")
+            return
+        
+        img = Image.open(img_path)
+        if img.mode != 'L':
+            img = convert_to_8bit(img)
+        arr = np.array(img)
+    else:
+        arr = image_array
     
     sample_rate = 12480
     frequency = 2400
@@ -205,32 +206,33 @@ def generate_audio(height, width, files):
     wav_file.setsampwidth(2)
     wav_file.setframerate(sample_rate)
     
-    phase = 0.0
+    amplitudes = arr.astype(np.float32) / 255.0
+    flat_amps = np.repeat(amplitudes.ravel(), samples_per_pixel)
+    
+    chunk_size = 1024 * 64
+    num_chunks = int(np.ceil(len(flat_amps) / chunk_size))
     angle_increment = 2 * math.pi * frequency / sample_rate
+    phase = 0.0
     
-    total_pixels = height * width
-    processed_pixels = 0
-    
-    for y in range(height):
-        for x in range(width):
-            pixel = arr[y, x]
-            amplitude = pixel / 255.0
-            
-            for _ in range(samples_per_pixel):
-                sample = amplitude * math.sin(phase)
-                normalized = int(sample * 32767)
-                wav_file.writeframes(struct.pack('<h', normalized))
-                phase += angle_increment
-            processed_pixels += 1
+    for i in range(num_chunks):
+        start = i * chunk_size
+        end = min(start + chunk_size, len(flat_amps))
+        chunk_amps = flat_amps[start:end]
+        indices = np.arange(start, end, dtype=np.float64)
+        angles = indices * angle_increment + phase
+        samples = chunk_amps * np.sin(angles)
+        samples_int = (samples * 32767).astype(np.int16)
+        wav_file.writeframes(samples_int.tobytes())
+        phase = (end * angle_increment + phase) % (2 * math.pi)
         
-        percentage = (processed_pixels / total_pixels) * 100
-        sys.stdout.write(f"\r\x1b[34mProgress\x1b[0m: {percentage:.2f}%")
+        percentage = (end / len(flat_amps)) * 100
+        sys.stdout.write(f"\r\x1b[34m音频生成进度\x1b[0m: {percentage:.2f}%")
         sys.stdout.flush()
     
     wav_file.close()
     print(f"\nAPT音频已保存至: {os.path.abspath(files)}")
 
 if __name__ == "__main__":
-    print("apt_encode v2.0.1")
-    height, width, files = generate_image()
-    generate_audio(height, width, files)
+    print("apt_encode v2.0.2 (Linux)")
+    height, width, files, output_array = generate_image()
+    generate_audio(height, width, files, output_array)
