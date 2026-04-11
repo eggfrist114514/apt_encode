@@ -2,6 +2,7 @@ English | [简体中文](README_zh.md)
 This is an improved version of the NOAA-APT encoder
 
 Changelog
+```
 2025.11.27   v2.0 official release
   1. Modified the audio modulation stream logic
   2. Modified image processing and padding related logic
@@ -19,5 +20,5 @@ Changelog
   2. Added ability to stop ongoing audio or image generation
   3. Optimized generation speed
   4. Fixed some more minor bugs
-
-Welcome! DE MC_blone
+```
+Welcome use it! DE MC_blone
