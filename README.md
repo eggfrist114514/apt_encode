@@ -20,5 +20,7 @@ Changelog
   2. Added ability to stop ongoing audio or image generation
   3. Optimized generation speed
   4. Fixed some more minor bugs
+2026.4.17    v2.0.1 bata v1
+  Add Android version
 ```
 Welcome use it! DE MC_blone
